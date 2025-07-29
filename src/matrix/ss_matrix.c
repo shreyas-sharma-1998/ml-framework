@@ -271,6 +271,35 @@ ss_matrix * ss_matrix_read_csv(const char * filename, uint8_t skip_lines, ss_err
     return matrix;
 }
 
+void ss_matrix_write_csv(const ss_matrix *matrix, const char * filename, ss_error *error) {
+    FILE *file;
+    uint32_t r,c;
+    char error_message[4096];
+    if(error) ss_clear_error(error);
+    if (matrix == NULL) {
+        ss_set_error(error, "Null pointer argument(1)", SS_NULL_POINTER);
+        return;
+    }
+    if (filename == NULL) {
+        ss_set_error(error, "Null pointer argument(2)", SS_NULL_POINTER);
+        return;
+    }
+    file = fopen(filename, "w");
+    if (file == NULL) {
+        sprintf(error_message, "Unable to create file (%s)", filename);
+        ss_set_error(error, error_message, SS_FILE_WRITE_ERROR);
+        return;
+    }
+    for (r = 0; r < matrix -> rows; ++r) {
+        for (c = 0; c < matrix -> columns; ++c) {
+            fprintf(file, "%lf", matrix->data[r*matrix -> columns + c]);
+            if (c != matrix -> columns-1) fputc(',', file);
+        }
+        fputc('\n', file);
+    }
+    fclose(file);
+}
+
 void ss_matrix_transpose(ss_matrix *matrix, ss_error *error) {
     uint32_t a,b;
     double value;
@@ -336,6 +365,142 @@ ss_matrix * ss_matrix_transpose_create_new(const ss_matrix *matrix, ss_error *er
         }
     }
     return new_matrix;
+}
+
+void ss_matrix_fill(ss_matrix *input_matrix, uint32_t start_row_index, uint32_t start_column_index, uint32_t end_row_index, uint32_t end_column_index, double fill_value, ss_error *error) {
+    uint32_t r,c;
+    if(error) ss_clear_error(error);
+    if (input_matrix == NULL) {
+        ss_set_error(error, "Null Pointer", SS_NULL_POINTER);
+        return;
+    }
+    if (end_row_index >= input_matrix -> rows) {
+        end_row_index = input_matrix -> rows - 1;
+    }
+    if (end_column_index >= input_matrix -> columns) {
+        end_column_index = input_matrix -> columns - 1;
+    }
+    for (r = start_row_index; r<= end_row_index; ++r) {
+        for (c = start_column_index; c <= end_column_index; ++c) {
+            input_matrix -> data [r* input_matrix -> columns + c] = fill_value;
+        }
+    }
+}
+
+void ss_matrix_copy(ss_matrix *target, uint32_t target_start_row_index, uint32_t target_start_column_index, const ss_matrix *source, uint32_t source_start_row_index, uint32_t source_start_column_index, uint32_t source_end_row_index, uint32_t source_end_column_index, ss_error *error) {
+    uint32_t target_r, target_c;
+    uint32_t source_r, source_c;
+    uint32_t target_end_row_index;
+    uint32_t target_end_column_index;
+    if (error) ss_clear_error(error);
+    if (target == NULL) {
+        ss_set_error(error, "Null Pointer argument(1)", SS_NULL_POINTER);
+        return;
+    }
+    if (source == NULL) {
+        ss_set_error(error, "Null Pointer argument(2)", SS_NULL_POINTER);
+        return;
+    }
+    if (target_start_row_index >= target -> rows) {
+        return;
+    }
+    if (target_start_column_index >= target -> columns) {
+        return;
+    }
+    if (source_end_row_index >= source -> rows) {
+        source_end_row_index = source -> rows - 1;
+    }
+    if (source_end_column_index >= source -> columns) {
+        source_end_column_index = source -> columns - 1;
+    }
+    target_end_row_index = target_start_row_index + (source_end_row_index - source_start_row_index);
+    target_end_column_index = target_start_column_index + (source_end_column_index - source_start_column_index);
+    if (target_end_row_index >= target -> rows) {
+        target_end_row_index = target -> rows - 1;
+    }
+    if (target_end_column_index >= target -> columns) {
+        target_end_column_index = target -> columns - 1;
+    }
+    source_r = source_start_row_index;
+    for (target_r = target_start_row_index; target_r <= target_end_row_index; ++target_r) {
+        source_c = source_start_column_index;
+        for(target_c = target_start_column_index; target_c <= target_end_column_index; ++target_c) {
+            target -> data[target_r * target -> columns + target_c] = source -> data[source_r * source -> columns + source_c];
+            ++source_c;
+        }
+        ++source_r;
+    }
+
+
+}
+
+ss_vector * ss_matrix_get_vector(const ss_matrix *source, uint32_t source_start_row_index, uint32_t source_start_column_index, uint32_t source_end_row_index, uint32_t source_end_column_index, ss_error *error) {
+    uint32_t r,c,i;
+    char error_message[4096];
+    uint32_t vector_size;
+    ss_vector *vector;
+    uint32_t rows_to_pick, columns_to_pick;
+    if (error) ss_clear_error(error);
+    if (source == NULL) {
+        ss_set_error(error, "Null Pointer", SS_NULL_POINTER);
+        return NULL;
+    }
+    if (source_start_row_index >= source -> rows) {
+        sprintf(error_message, "Cannot create vector using (%u,%u)-(%u,%u)", source_start_row_index, source_start_column_index, source_end_row_index, source_end_column_index);
+        ss_set_error(error, error_message, SS_GET_VECTOR_ERROR);
+        return NULL;
+    }
+    if (source_start_column_index >= source -> columns) {
+        sprintf(error_message, "Cannot create vector using (%u,%u)-(%u,%u)", source_start_row_index, source_start_column_index, source_end_row_index, source_end_column_index);
+        ss_set_error(error, error_message, SS_GET_VECTOR_ERROR);
+        return NULL;
+    }
+    if (source_end_row_index >= source -> rows) {
+        sprintf(error_message, "Cannot create vector using (%u,%u)-(%u,%u)", source_start_row_index, source_start_column_index, source_end_row_index, source_end_column_index);
+        ss_set_error(error, error_message, SS_GET_VECTOR_ERROR);
+        return NULL;
+    }
+    if (source_end_column_index >= source -> columns) {
+        sprintf(error_message, "Cannot create vector using (%u,%u)-(%u,%u)", source_start_row_index, source_start_column_index, source_end_row_index, source_end_column_index);
+        ss_set_error(error, error_message, SS_GET_VECTOR_ERROR);
+        return NULL;
+    }
+    rows_to_pick = source_end_row_index - source_start_row_index + 1;
+    columns_to_pick = source_end_column_index - source_start_column_index + 1;
+    if (rows_to_pick > 1 && columns_to_pick > 1) {
+        sprintf(error_message, "Cannot create vector using (%u,%u)-(%u,%u)", source_start_row_index, source_start_column_index, source_end_row_index, source_end_column_index);
+        ss_set_error(error, error_message, SS_GET_VECTOR_ERROR);
+        return NULL;
+    }
+    if (rows_to_pick == 1) vector_size = columns_to_pick;
+    else vector_size = rows_to_pick;
+    vector = ss_vector_create_new(vector_size, error);
+    if (vector == NULL) return NULL;
+    if (rows_to_pick == 1) {
+        r = source_start_row_index;
+        i = 0;
+        for (c = source_start_column_index; c <= source_end_column_index; ++c) {
+            ss_vector_set(vector, i, source -> data[r * source -> columns + c], error);
+            ++i;
+        }
+    } else {
+        c = source_start_column_index;
+        i = 0;
+        for (r = source_start_row_index; r <= source_end_row_index; ++r) {
+            ss_vector_set(vector, i, source -> data[r * source -> columns + c], error);
+            ++i;
+        }
+    }
+    return vector;
+}
+
+double * ss_matrix_get_data(const ss_matrix *matrix, ss_error *error) {
+    if (error) ss_clear_error(error);
+    if (matrix == NULL) {
+        ss_set_error(error, "Null pointer", SS_NULL_POINTER);
+        return NULL;
+    }
+    return matrix -> data;
 }
 
 void ss_matrix_print(FILE *f, const ss_matrix *matrix, ss_error *error) {

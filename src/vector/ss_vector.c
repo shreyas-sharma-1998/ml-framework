@@ -1,6 +1,8 @@
 #include<ss.h>
 #include<stdlib.h>
 #include<private_ss.h>
+#include<time.h>
+#include<string.h>
 
 typedef struct __ss_vector {
     ss_matrix *matrix;
@@ -78,7 +80,6 @@ uint32_t ss_vector_get_size(const ss_vector *vector, ss_error *error) {
 
 void ss_vector_write(const ss_vector *vector, const char * filename, ss_error *error) {
     if (error) ss_clear_error(error);
-    char error_message[4096];
     if (vector == NULL) {
         ss_set_error(error, "Null Pointer argument(1)", SS_NULL_POINTER);
         return;
@@ -172,6 +173,93 @@ ss_vector * ss_vector_read_csv(const char * filename, uint8_t skip_lines, ss_err
         vector -> matrix = matrix;
     }
     return vector;
+}
+
+void ss_vector_write_csv(const ss_vector *vector, const char * filename, ss_error *error) {
+    if (error) ss_clear_error(error);
+    if (vector == NULL) {
+        ss_set_error(error, "Null pointer argument (1)", SS_NULL_POINTER);
+        return;
+    }
+    if (filename == NULL) {
+        ss_set_error(error, "Null pointer argument (2)", SS_NULL_POINTER);
+        return;
+    }
+    ss_matrix_write_csv(vector -> matrix, filename, error);
+}
+
+void ss_vector_fill_random(ss_vector *vector, ss_error *error) {
+    uint32_t i;
+    double value;
+    uint32_t size;
+    if (error) ss_clear_error(error);
+    if (vector == NULL) {
+        ss_set_error(error, "Null Pointer", SS_NULL_POINTER);
+        return;
+    }
+    srand(time(0));
+    size = ss_vector_get_size(vector, error);
+    for (i = 0; i < size; ++i) {
+        value = (double) rand();
+        ss_matrix_set(vector -> matrix, i, 0, value, error);
+    }
+}
+
+ss_matrix * ss_vector_get_matrix(const ss_vector *vector, ss_error *error) {
+    if (error) ss_clear_error(error);
+    if (vector == NULL) {
+        ss_set_error(error, "Null Pointer", SS_NULL_POINTER);
+        return NULL;
+    }
+    return vector -> matrix;
+}
+
+void ss_vector_set_matrix(ss_vector *vector, ss_matrix *matrix, ss_error *error) {
+    if (error) ss_clear_error(error);
+    if (vector == NULL) {
+        ss_set_error(error, "Null Pointer argument(1)", SS_NULL_POINTER);
+        return;
+    }
+    if (matrix == NULL) {
+        ss_set_error(error, "Null Pointer argument(2)", SS_NULL_POINTER);
+        return;
+    }
+    if (vector -> matrix == matrix) return;
+    ss_matrix_destroy(vector -> matrix, error);
+    vector -> matrix = matrix;
+}
+
+ss_vector * ss_vector_transpose(const ss_vector *vector, ss_vector *transposed_vector_container, ss_error *error) {
+    ss_vector *transposed_vector = NULL;
+    uint32_t sz;
+    char error_message[4096];
+    uint32_t transposed_vector_container_size;
+
+    if (error) ss_clear_error(error);
+
+    if (!vector) {
+        ss_set_error(error, "Null Pointer", SS_NULL_POINTER);
+        return NULL;
+    }
+    if (vector == transposed_vector_container) return transposed_vector_container;
+    sz = ss_vector_get_size(vector, error);
+    if (transposed_vector_container == NULL) {
+        transposed_vector = ss_vector_create_new(sz, error);
+        if (transposed_vector == NULL) {
+            ss_set_error(error, "Low Memory", SS_LOW_MEMORY);
+            return NULL;
+        }
+    } else {
+        transposed_vector_container_size = ss_vector_get_size(transposed_vector_container, error);
+        if (transposed_vector_container_size != sz) {
+            sprintf(error_message, "Invalid container size (%u)", transposed_vector_container_size);
+            ss_set_error(error, error_message, SS_INVALID_VECTOR_CONTAINER_SIZE);
+            return NULL;
+        }
+        transposed_vector = transposed_vector_container;
+    }
+    memcpy(ss_matrix_get_data(transposed_vector -> matrix, error), ss_matrix_get_data(vector -> matrix, error), sizeof(double)*sz);
+    return transposed_vector;
 }
 
 void ss_vector_print(FILE *f, const ss_vector *vector, ss_error *error) {

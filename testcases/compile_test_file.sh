@@ -1,1 +1,3 @@
-gcc $1 -I ../include -L ../lib -lss -o $2
+rm *.out
+
+gcc $1 -I ../include -I ../private/include -L ../lib -lss -lm -o $2 -Wall
