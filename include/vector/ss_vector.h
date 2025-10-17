@@ -22,7 +22,7 @@ ss_vector * ss_vector_read_csv(const char * filename, uint8_t skip_lines, ss_err
 
 void ss_vector_write_csv(const ss_vector *vector, const char * filename, ss_error *error);
 
-void ss_vector_fill_random(ss_vector *vector, ss_error *error);
+void ss_vector_fill_random(ss_vector *vector, double min, double max, ss_error *error);
 
 void ss_vector_print(FILE *f, const ss_vector *vector, ss_error *error);
 

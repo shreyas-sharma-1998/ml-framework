@@ -67,7 +67,7 @@ ss_vector * ss_linear_regression_fit(const ss_matrix *x_matrix, const ss_vector 
     } else {
         model_vector = ss_vector_create_new(model_vector_size, error);
         if (model_vector == NULL) goto catch_error;
-        ss_vector_fill_random(model_vector, error);
+        ss_vector_fill_random(model_vector, -1, 1, error);
     }
     printf("Starting Model : \n");
     for (int i = 0; i < model_vector_size; ++i) {
@@ -108,8 +108,6 @@ static FILE *data_file = NULL;
 static FILE *gnuplot = NULL;
 
 uint8_t callback_function(uint32_t i, double error, ss_vector *model) {
-    printf("Iteration %u, error %40.20f\n", i, error);
-    return 1;
     if (i == 1) {
         // Open the data file for writing error values
         data_file = fopen("error_data.txt", "w");
@@ -129,14 +127,17 @@ uint8_t callback_function(uint32_t i, double error, ss_vector *model) {
         fprintf(gnuplot, "set ylabel 'Error'\n");
         fprintf(gnuplot, "set logscale y\n");
         fprintf(gnuplot, "set grid\n");
-        fprintf(gnuplot, "plot 'error_data.txt' using 1:2 with lines title 'Error'\n");
+        fprintf(gnuplot, "set yrange [1e-1:1e+25]\n");
+        fprintf(gnuplot, "set xrange [0:%d]\n", 25000000);  // e.g. 2100000
+        fprintf(gnuplot, "set style line 1 lc rgb '#0072BD' lt 1 lw 2 pt 7 ps 1.5\n");
+        fprintf(gnuplot, "plot 'error_data.txt' using 1:2 with lines ls 1 title 'Error'\n");
         fflush(gnuplot);
     }
     // Append current iteration and error to data file
-    if (i == 1 || i % 10000 == 0) {
+//    if (i == 1 || i % 100 == 0) {
         fprintf(data_file, "%u %f\n", i, error);
         fflush(data_file); // ensure it's written immediately
-    }
+//    }
     // Refresh plot
     if (i % 100000 == 0) {
         printf("Iteration %u, error %40.20f\n", i, error);

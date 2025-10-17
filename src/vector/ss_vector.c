@@ -188,7 +188,7 @@ void ss_vector_write_csv(const ss_vector *vector, const char * filename, ss_erro
     ss_matrix_write_csv(vector -> matrix, filename, error);
 }
 
-void ss_vector_fill_random(ss_vector *vector, ss_error *error) {
+void ss_vector_fill_random(ss_vector *vector, double min, double max, ss_error *error) {
     uint32_t i;
     double value;
     uint32_t size;
@@ -200,7 +200,7 @@ void ss_vector_fill_random(ss_vector *vector, ss_error *error) {
     srand(time(0));
     size = ss_vector_get_size(vector, error);
     for (i = 0; i < size; ++i) {
-        value = (double) rand();
+        value = min + ((double)rand() / RAND_MAX) * (max - min);
         ss_matrix_set(vector -> matrix, i, 0, value, error);
     }
 }

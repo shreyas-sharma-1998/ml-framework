@@ -29,6 +29,7 @@
 #define SS_INVALID_NUMBER_OF_ITERATIONS 24
 #define SS_INPUT_AND_TARGET_OUTPUT_SIZE_MISMATCH 25
 #define SS_INVALID_SIZE_FOR_VECTOR_MULTIPLICATION 26
+#define SS_INVALID_MODEL_SIZE 27
 
 #define ss_on_error_throw(a,b) if(ss_has_error(a)) goto b
 

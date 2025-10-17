@@ -6,4 +6,6 @@
 #include<ss_vector.h>
 #include<ss_math.h>
 #include<ss_ml_math.h>
+#include<ss_linear_regression.h>
+#include<ss_data_provider.h>
 #endif

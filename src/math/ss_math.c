@@ -1,8 +1,9 @@
 #include<ss.h>
 #include<stdlib.h>
 #include<private_ss.h>
+#include<math.h>
 
-ss_matrix * ss_multiply_matrix(ss_matrix *left_matrix, ss_matrix *right_matrix, ss_matrix *product_matrix_container, ss_error *error) {
+ss_matrix * ss_multiply_matrix(const ss_matrix *left_matrix, const ss_matrix *right_matrix, ss_matrix *product_matrix_container, ss_error *error) {
     uint32_t left_matrix_rows, left_matrix_columns;
     uint32_t right_matrix_rows, right_matrix_columns;
     uint32_t product_matrix_rows, product_matrix_columns;
@@ -62,7 +63,7 @@ ss_matrix * ss_multiply_matrix(ss_matrix *left_matrix, ss_matrix *right_matrix, 
     return product_matrix;
 }
 
-ss_vector * ss_multiply_matrix_with_vector(ss_matrix *matrix, ss_vector *vector, ss_vector *product_vector_container, ss_error *error) {
+ss_vector * ss_multiply_matrix_with_vector(const ss_matrix *matrix, const ss_vector *vector, ss_vector *product_vector_container, ss_error *error) {
     char error_message[4096];
     uint32_t matrix_rows;
     uint32_t matrix_columns;
@@ -281,3 +282,187 @@ ss_vector * ss_subtract_scalar_from_vector(const ss_vector *left_vector, double 
     }
     return result_vector;
 }
+
+ss_vector * ss_sigmoid_vector(const ss_vector *vector, ss_vector *result_vector_container, ss_error *error) {
+    char error_message[4096];
+    ss_vector *result_vector;
+    double value, sigmoid_value;
+    uint32_t vector_size, result_vector_container_size, i;
+
+    if (vector == NULL) {
+        ss_set_error(error, "Null pointer", SS_NULL_POINTER);
+        return NULL;
+    }
+    vector_size = ss_vector_get_size(vector, error);
+    if (result_vector_container == NULL) {
+        result_vector = ss_vector_create_new(vector_size, error);
+        if (result_vector == NULL) return NULL;
+    } else {
+        result_vector_container_size = ss_vector_get_size(result_vector_container, error);
+        if (result_vector_container_size != vector_size) {
+            sprintf(error_message, "Invalid container size (%u)", result_vector_container_size);
+            ss_set_error(error, error_message, SS_INVALID_VECTOR_CONTAINER_SIZE);
+            return NULL;
+        }
+        result_vector = result_vector_container;
+    }
+    for (i = 0; i < vector_size; ++i) {
+        value = ss_vector_get(vector, i, error);
+        sigmoid_value = 1.0 / (1.0 + exp(-value));
+        ss_vector_set(result_vector, i, sigmoid_value, error);
+    }
+    return result_vector;
+}
+
+ss_vector * ss_log_vector(const ss_vector *vector, ss_vector *result_vector_container, ss_error *error) {
+    char error_message[4096];
+    ss_vector *result_vector;
+    double value, log_value;
+    uint32_t vector_size, result_vector_container_size, i;
+
+    if (vector == NULL) {
+        ss_set_error(error, "Null pointer", SS_NULL_POINTER);
+        return NULL;
+    }
+    vector_size = ss_vector_get_size(vector, error);
+    if (result_vector_container == NULL) {
+        result_vector = ss_vector_create_new(vector_size, error);
+        if (result_vector == NULL) return NULL;
+    } else {
+        result_vector_container_size = ss_vector_get_size(result_vector_container, error);
+        if (result_vector_container_size != vector_size) {
+            sprintf(error_message, "Invalid container size (%u)", result_vector_container_size);
+            ss_set_error(error, error_message, SS_INVALID_VECTOR_CONTAINER_SIZE);
+            return NULL;
+        }
+        result_vector = result_vector_container;
+    }
+    for (i = 0; i < vector_size; ++i) {
+        value = ss_vector_get(vector, i, error);
+        double safe_value = fmin(fmax(value, 1e-15), 1.0 - 1e-15);
+        log_value = log(safe_value);
+        ss_vector_set(result_vector, i, log_value, error);
+    }
+    return result_vector;
+}
+
+ss_vector * ss_multiply_vector_element_wise(const ss_vector *left_vector, const ss_vector *right_vector, ss_vector *result_vector_container, ss_error *error) {
+
+    char error_message[4096];
+    ss_vector *result_vector;
+    double *left_data, *right_data;
+    uint32_t left_vector_size, right_vector_size, result_vector_container_size, i;
+    if (left_vector == NULL) {
+        ss_set_error(error, "Null pointer argument (1)", SS_NULL_POINTER);
+        return NULL;
+    }
+    if (right_vector == NULL) {
+        ss_set_error(error, "Null pointer argument (2)", SS_NULL_POINTER);
+        return NULL;
+    }
+
+    left_vector_size = ss_vector_get_size(left_vector, error);
+    right_vector_size = ss_vector_get_size(right_vector, error);
+
+    if (left_vector_size != right_vector_size) {
+        sprintf(error_message, "Cannot multiply vector of size %u with vector of size %u element wise", left_vector_size, right_vector_size);
+        ss_set_error(error, error_message, SS_INVALID_SIZE_FOR_VECTOR_MULTIPLICATION);
+        return NULL;
+    }
+
+    if (result_vector_container == NULL) {
+        result_vector = ss_vector_create_new(left_vector_size, error);
+        if (result_vector == NULL) return NULL;
+    } else {
+        result_vector_container_size = ss_vector_get_size(result_vector_container, error);
+        if (result_vector_container_size != left_vector_size) {
+            sprintf(error_message, "Invalid container size (%u)", result_vector_container_size);
+            ss_set_error(error, error_message, SS_INVALID_VECTOR_CONTAINER_SIZE);
+            return NULL;
+        }
+        result_vector = result_vector_container;
+    }
+    left_data = ss_matrix_get_data(ss_vector_get_matrix(left_vector, error), error);
+    right_data = ss_matrix_get_data(ss_vector_get_matrix(right_vector, error), error);
+    for (i = 0; i < left_vector_size; ++i) {
+        ss_vector_set(result_vector, i, left_data[i]*right_data[i], error);
+    }
+    return result_vector;
+}
+
+ss_vector * ss_subtract_vector_from_scalar(double left_value, const ss_vector *right_vector, ss_vector *result_vector_container, ss_error *error) {
+    char error_message[4096];
+    ss_vector *result_vector;
+    double *right_data;
+    uint32_t right_vector_size, result_vector_container_size, i;
+    if (right_vector == NULL) {
+        ss_set_error(error, "Null pointer argument", SS_NULL_POINTER);
+        return NULL;
+    }
+
+    right_vector_size = ss_vector_get_size(right_vector, error);
+
+    if (result_vector_container == NULL) {
+        result_vector = ss_vector_create_new(right_vector_size, error);
+        if (result_vector == NULL) return NULL;
+    } else {
+        result_vector_container_size = ss_vector_get_size(result_vector_container, error);
+        if (result_vector_container_size != right_vector_size) {
+            sprintf(error_message, "Invalid container size (%u)", result_vector_container_size);
+            ss_set_error(error, error_message, SS_INVALID_VECTOR_CONTAINER_SIZE);
+            return NULL;
+        }
+        result_vector = result_vector_container;
+    }
+
+    right_data = ss_matrix_get_data(ss_vector_get_matrix(right_vector, error), error);
+
+    for (i = 0; i < right_vector_size; ++i) {
+        ss_vector_set(result_vector, i, 1.0 - right_data[i], error);
+    }
+    return result_vector;
+}
+
+ss_vector * ss_add_vector_element_wise(const ss_vector *left_vector, const ss_vector *right_vector, ss_vector *result_vector_container, ss_error *error) {
+    char error_message[4096];
+    ss_vector *result_vector;
+    double *left_data, *right_data;
+    uint32_t left_vector_size, right_vector_size, result_vector_container_size, i;
+    if (left_vector == NULL) {
+        ss_set_error(error, "Null pointer argument (1)", SS_NULL_POINTER);
+        return NULL;
+    }
+    if (right_vector == NULL) {
+        ss_set_error(error, "Null pointer argument (2)", SS_NULL_POINTER);
+        return NULL;
+    }
+
+    left_vector_size = ss_vector_get_size(left_vector, error);
+    right_vector_size = ss_vector_get_size(right_vector, error);
+
+    if (left_vector_size != right_vector_size) {
+        sprintf(error_message, "Cannot multiply vector of size %u with vector of size %u element wise", left_vector_size, right_vector_size);
+        ss_set_error(error, error_message, SS_INVALID_SIZE_FOR_VECTOR_MULTIPLICATION);
+        return NULL;
+    }
+
+    if (result_vector_container == NULL) {
+        result_vector = ss_vector_create_new(left_vector_size, error);
+        if (result_vector == NULL) return NULL;
+    } else {
+        result_vector_container_size = ss_vector_get_size(result_vector_container, error);
+        if (result_vector_container_size != left_vector_size) {
+            sprintf(error_message, "Invalid container size (%u)", result_vector_container_size);
+            ss_set_error(error, error_message, SS_INVALID_VECTOR_CONTAINER_SIZE);
+            return NULL;
+        }
+        result_vector = result_vector_container;
+    }
+    left_data = ss_matrix_get_data(ss_vector_get_matrix(left_vector, error), error);
+    right_data = ss_matrix_get_data(ss_vector_get_matrix(right_vector, error), error);
+    for (i = 0; i < left_vector_size; ++i) {
+        ss_vector_set(result_vector, i, left_data[i] + right_data[i], error);
+    }
+    return result_vector;
+}
+

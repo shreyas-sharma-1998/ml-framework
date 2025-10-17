@@ -57,7 +57,7 @@ int main() {
 
     printf("ss_vector_fill_random test starts\n");
     vector_1 = ss_vector_create_new(4, error);
-    ss_vector_fill_random(vector_1, error);
+    ss_vector_fill_random(vector_1, INT_MIN, INT_MAX, error);
     ss_vector_print(stdout, vector_1, error);
     printf("ss_vector_fill_random test ends\n");
 
